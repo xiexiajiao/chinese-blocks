@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>趣味编程 - 少儿图形化编程工具</title>
+    <title>趣味编程 - 飞机大战</title>
     <script src="https://unpkg.com/blockly/blockly.min.js"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -12,7 +12,7 @@
         <!-- 顶部标题栏 -->
         <header class="header">
             <div class="header-left">
-                <h1>🎮 趣味编程</h1>
+                <h1>✈️ 趣味飞行编程</h1>
                 <div class="project-info">
                     <span id="projectName">未命名项目</span>
                     <span id="saveStatus" class="save-status"></span>
@@ -47,49 +47,49 @@
                             <block type="event_when_key_pressed"></block>
                         </category>
 
-                        <!-- 运动类积木 -->
-                        <category name="🔵 运动" colour="210">
-                            <block type="motion_move_steps">
-                                <value name="STEPS">
+                        <!-- 飞行控制 -->
+                        <category name="✈️ 飞行控制" colour="210">
+                            <block type="flight_move_forward">
+                                <value name="DISTANCE">
                                     <shadow type="math_number">
                                         <field name="NUM">10</field>
                                     </shadow>
                                 </value>
                             </block>
-                            <block type="motion_turn_right">
+                            <block type="flight_turn_left">
                                 <value name="DEGREES">
                                     <shadow type="math_number">
                                         <field name="NUM">15</field>
                                     </shadow>
                                 </value>
                             </block>
-                            <block type="motion_turn_left">
+                            <block type="flight_turn_right">
                                 <value name="DEGREES">
                                     <shadow type="math_number">
                                         <field name="NUM">15</field>
                                     </shadow>
                                 </value>
                             </block>
-                            <block type="motion_goto_xy">
+                            <block type="flight_climb">
+                                <value name="HEIGHT">
+                                    <shadow type="math_number">
+                                        <field name="NUM">10</field>
+                                    </shadow>
+                                </value>
+                            </block>
+                            <block type="flight_dive">
+                                <value name="HEIGHT">
+                                    <shadow type="math_number">
+                                        <field name="NUM">10</field>
+                                    </shadow>
+                                </value>
+                            </block>
+                            <block type="flight_goto">
                                 <value name="X">
                                     <shadow type="math_number">
                                         <field name="NUM">0</field>
                                     </shadow>
                                 </value>
-                                <value name="Y">
-                                    <shadow type="math_number">
-                                        <field name="NUM">0</field>
-                                    </shadow>
-                                </value>
-                            </block>
-                            <block type="motion_set_x">
-                                <value name="X">
-                                    <shadow type="math_number">
-                                        <field name="NUM">0</field>
-                                    </shadow>
-                                </value>
-                            </block>
-                            <block type="motion_set_y">
                                 <value name="Y">
                                     <shadow type="math_number">
                                         <field name="NUM">0</field>
@@ -98,27 +98,39 @@
                             </block>
                         </category>
 
-                        <!-- 外观类积木 -->
-                        <category name="🟣 外观" colour="300">
+                        <!-- 飞行动作 -->
+                        <category name="🎭 飞行动作" colour="290">
+                            <block type="action_barrel_roll"></block>
+                            <block type="action_loop"></block>
+                            <block type="action_flip"></block>
+                            <block type="action_hover">
+                                <value name="DURATION">
+                                    <shadow type="math_number">
+                                        <field name="NUM">1</field>
+                                    </shadow>
+                                </value>
+                            </block>
+                            <block type="action_speed_up"></block>
+                            <block type="action_slow_down"></block>
+                        </category>
+
+                        <!-- 特效 -->
+                        <category name="✨ 特效" colour="300">
+                            <block type="effect_smoke"></block>
+                            <block type="effect_fire"></block>
+                            <block type="effect_rainbow"></block>
+                            <block type="effect_clear"></block>
                             <block type="looks_say">
                                 <value name="MESSAGE">
                                     <shadow type="text">
-                                        <field name="TEXT">你好！</field>
+                                        <field name="TEXT">看我的特技！</field>
                                     </shadow>
                                 </value>
                             </block>
-                            <block type="looks_think">
-                                <value name="MESSAGE">
-                                    <shadow type="text">
-                                        <field name="TEXT">让我想想...</field>
-                                    </shadow>
-                                </value>
-                            </block>
-                            <block type="looks_change_color_effect"></block>
-                            <block type="looks_clear_graphic_effects"></block>
+                            <block type="looks_change_color"></block>
                         </category>
 
-                        <!-- 控制类积木 -->
+                        <!-- 控制类 -->
                         <category name="🟠 控制" colour="30">
                             <block type="control_wait">
                                 <value name="DURATION">
@@ -140,7 +152,7 @@
                             <block type="control_stop"></block>
                         </category>
 
-                        <!-- 数字与逻辑 -->
+                        <!-- 数字 -->
                         <category name="🔢 数字" colour="230">
                             <block type="math_number">
                                 <field name="NUM">0</field>
@@ -169,6 +181,25 @@
                                     </shadow>
                                 </value>
                             </block>
+                            <block type="math_compare">
+                                <value name="A">
+                                    <shadow type="math_number">
+                                        <field name="NUM">0</field>
+                                    </shadow>
+                                </value>
+                                <value name="B">
+                                    <shadow type="math_number">
+                                        <field name="NUM">0</field>
+                                    </shadow>
+                                </value>
+                            </block>
+                        </category>
+
+                        <!-- 传感器 -->
+                        <category name="📊 传感器" colour="120">
+                            <block type="sensor_altitude"></block>
+                            <block type="sensor_speed"></block>
+                            <block type="sensor_direction"></block>
                         </category>
                     </xml>
                     <div id="blocklyDiv"></div>
@@ -179,23 +210,23 @@
             <main class="stage-panel">
                 <div class="stage-area">
                     <div class="stage-header">
-                        <span>🎭 舞台</span>
-                        <span id="positionDisplay">位置：(0, 0) 方向：90°</span>
+                        <span>🎭 飞行舞台</span>
+                        <span id="positionDisplay">位置：(0, 0) 高度：0m 速度：5 马赫 方向：90°</span>
                     </div>
                     <div class="stage-wrapper">
                         <canvas id="stageCanvas" width="480" height="360"></canvas>
                     </div>
                 </div>
 
-                <!-- 角色信息 -->
+                <!-- 飞机信息 -->
                 <div class="sprite-panel">
                     <div class="sprite-header">
-                        <span>🐱 角色：小猫</span>
+                        <span>✈️ 飞机控制</span>
                     </div>
                     <div class="sprite-controls">
                         <div class="control-row">
                             <label>大小</label>
-                            <input type="range" id="sizeSlider" min="10" max="200" value="100">
+                            <input type="range" id="sizeSlider" min="50" max="200" value="100">
                             <span id="sizeValue">100</span>%
                         </div>
                         <div class="control-row">
@@ -205,6 +236,9 @@
                                 <span class="slider"></span>
                             </label>
                         </div>
+                    </div>
+                    <div class="flight-tips">
+                        <span>💡 提示：使用 <code>↑↓←→</code> 控制，<code>F</code> 加速，<code>S</code> 减速</span>
                     </div>
                 </div>
             </main>
@@ -218,7 +252,7 @@
     <div id="guideModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>🤖 编程小助手</h2>
+                <h2>🤖 飞行教练</h2>
                 <button class="modal-close" id="closeGuideBtn">&times;</button>
             </div>
             <div class="modal-body">
@@ -226,49 +260,48 @@
                     <div class="guide-step active" data-step="1">
                         <div class="step-number">1</div>
                         <div class="step-content">
-                            <h3>欢迎使用趣味编程！</h3>
-                            <p>这是一个像搭积木一样简单的编程工具。让我们开始吧！</p>
+                            <h3>欢迎加入飞行学院！</h3>
+                            <p>今天你要学习驾驶一架特技飞机，完成各种飞行动作！</p>
                         </div>
                     </div>
                     <div class="guide-step" data-step="2">
                         <div class="step-number">2</div>
                         <div class="step-content">
-                            <h3>第一步：添加开始积木</h3>
-                            <p>从左侧积木库找到 <strong>🟡 事件</strong>，拖入 <code>🚩 当绿旗被点击</code> 到工作区</p>
-                            <div class="step-hint">💡 这是程序的起点，就像汽车的点火开关</div>
+                            <h3>第一步：启动引擎</h3>
+                            <p>从左侧找到 <strong>🟡 事件</strong>，拖入 <code>🚩 当绿旗被点击</code></p>
+                            <div class="step-hint">💡 这是程序的起点，就像飞机的点火开关</div>
                         </div>
                     </div>
                     <div class="guide-step" data-step="3">
                         <div class="step-number">3</div>
                         <div class="step-content">
-                            <h3>第二步：让小猫动起来</h3>
-                            <p>在 <code>🚩</code> 积木下面拼接 <strong>🔵 运动</strong> 里的 <code>📍 移动 10 步</code></p>
-                            <div class="step-hint">💡 积木会像磁铁一样"咔哒"吸在一起</div>
+                            <h3>第二步：起飞！</h3>
+                            <p>在 <code>🚩</code> 下面拼接 <strong>✈️ 飞行控制</strong> 里的 <code>✈️ 向前飞行</code></p>
+                            <div class="step-hint">💡 飞机就会向前飞了！</div>
                         </div>
                     </div>
                     <div class="guide-step" data-step="4">
                         <div class="step-number">4</div>
                         <div class="step-content">
-                            <h3>第三步：运行程序</h3>
-                            <p>点击右上角的 <code>▶️ 运行</code> 按钮，看小猫移动！</p>
-                            <div class="step-hint">💡 按 <code>Escape</code> 可以随时停止</div>
+                            <h3>第三步：来个特技！</h3>
+                            <p>添加 <strong>🎭 飞行动作</strong> 里的 <code>🌀 桶滚机动</code> 或 <code>⭕ 后空翻</code></p>
+                            <div class="step-hint">💡 飞机可以做很多帅气的动作哦！</div>
                         </div>
                     </div>
                     <div class="guide-step" data-step="5">
                         <div class="step-number">5</div>
                         <div class="step-content">
-                            <h3>试试看：画个正方形</h3>
-                            <p>使用 <code>🔁 重复 4 次</code> 包裹：<br>
-                            <code>📍 移动 50 步</code> + <code>🔃 顺时针旋转 90 度</code></p>
-                            <div class="step-hint">💡 这就是"循环"，让代码重复执行</div>
+                            <h3>第四步：加特效！</h3>
+                            <p>从 <strong>✨ 特效</strong> 里添加 <code>🌈 彩虹尾迹</code> 或 <code>🔥 喷射火焰</code></p>
+                            <div class="step-hint">💡 这样飞行更酷炫！</div>
                         </div>
                     </div>
                     <div class="guide-step" data-step="6">
                         <div class="step-number">6</div>
                         <div class="step-content">
-                            <h3>🎉 你真棒！</h3>
-                            <p>现在你已经学会了基础，尽情发挥创意吧！</p>
-                            <p>记得点击 <code>💾 保存</code> 保存你的作品</p>
+                            <h3>🎉 完成首飞！</h3>
+                            <p>点击右上角 <code>▶️ 运行</code> 看你的表演！记得保存作品哦！</p>
+                            <div class="step-hint">💡 试试用循环让飞机做连续动作</div>
                         </div>
                     </div>
                 </div>
@@ -281,7 +314,7 @@
         </div>
     </div>
 
-    <!-- 新建/加载项目弹窗 -->
+    <!-- 项目弹窗 -->
     <div id="projectModal" class="modal">
         <div class="modal-content modal-small">
             <div class="modal-header">
@@ -292,16 +325,14 @@
                 <div id="saveProjectView">
                     <div class="form-group">
                         <label>项目名称</label>
-                        <input type="text" id="projectNameInput" placeholder="给我的项目起个名字" maxlength="30">
+                        <input type="text" id="projectNameInput" placeholder="给我的飞行表演起个名字" maxlength="30">
                     </div>
                     <div class="form-actions">
                         <button id="confirmSaveBtn" class="btn btn-save">💾 保存</button>
                     </div>
                 </div>
                 <div id="loadProjectView" style="display: none;">
-                    <div class="project-list" id="projectList">
-                        <!-- 项目列表动态生成 -->
-                    </div>
+                    <div class="project-list" id="projectList"></div>
                 </div>
             </div>
         </div>

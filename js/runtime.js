@@ -1,10 +1,10 @@
 /**
- * 运行时引擎 - 负责执行积木代码
- * 包含角色管理、动画执行、事件处理
+ * 运行时引擎 - 飞机主题
+ * 包含飞机绘制、飞行动画、特效系统
  */
 
-// ==================== 角色类 ====================
-class Sprite {
+// ==================== 飞机类 ====================
+class Airplane {
     constructor(canvas, ctx) {
         this.canvas = canvas;
         this.ctx = ctx;
@@ -12,20 +12,47 @@ class Sprite {
         // 位置和方向
         this.x = 0;
         this.y = 0;
+        this.z = 0; // 高度（用缩放模拟）
         this.direction = 90; // 90=右，0=上，180=下，270=左
-        this.size = 100; // 大小百分比
+        this.size = 100;
+
+        // 飞行状态
+        this.speed = 5;
+        this.maxSpeed = 15;
+        this.minSpeed = 2;
+        this.isAccelerating = false;
+        this.isDecelerating = false;
+
+        // 动作状态
+        this.isRolling = false;
+        this.rollAngle = 0;
+        this.isFlipping = false;
+        this.flipAngle = 0;
+        this.flipDirection = 0;
 
         // 外观
         this.visible = true;
-        this.colorEffect = 0;
+        this.colorIndex = 0;
+        this.colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'];
+        this.currentColor = this.colors[0];
+
+        // 特效
+        this.effects = {
+            smoke: false,
+            fire: false,
+            rainbow: false
+        };
+        this.particles = [];
+
+        // 说话气泡
         this.sayMessage = null;
         this.sayTimer = 0;
 
-        // 绘制小猫角色（用 Canvas 绘制）
-        this.drawCat = this.drawCat.bind(this);
+        // 尾迹
+        this.trail = [];
     }
 
-    // 转换为 Scratch 坐标（Canvas 坐标不同）
+    // 转换为 Scratch 坐标
     toCanvasX(x) {
         return this.canvas.width / 2 + x;
     }
@@ -34,21 +61,42 @@ class Sprite {
         return this.canvas.height / 2 - y;
     }
 
-    // 移动
-    move(steps) {
+    // 向前飞行
+    moveForward(distance) {
         const rad = (this.direction - 90) * Math.PI / 180;
-        this.x += steps * Math.cos(rad);
-        this.y += steps * Math.sin(rad);
-
-        // 边界检测
-        this.x = Math.max(-240, Math.min(240, this.x));
-        this.y = Math.max(-180, Math.min(180, this.y));
+        const steps = distance / 10;
+        for (let i = 0; i < steps; i++) {
+            this.x += Math.cos(rad) * 2;
+            this.y += Math.sin(rad) * 2;
+            this.addTrail();
+        }
+        this.boundCheck();
     }
 
-    // 旋转
-    turn(degrees) {
+    // 向左转弯
+    turnLeft(degrees) {
+        this.direction = (this.direction - degrees) % 360;
+        if (this.direction < 0) this.direction += 360;
+    }
+
+    // 向右转弯
+    turnRight(degrees) {
         this.direction = (this.direction + degrees) % 360;
         if (this.direction < 0) this.direction += 360;
+    }
+
+    // 爬升
+    climb(height) {
+        this.z = Math.min(100, this.z + height / 10);
+        this.y += height / 5;
+        this.boundCheck();
+    }
+
+    // 俯冲
+    dive(height) {
+        this.z = Math.max(-50, this.z - height / 10);
+        this.y -= height / 5;
+        this.boundCheck();
     }
 
     // 设置位置
@@ -57,10 +105,100 @@ class Sprite {
         this.y = y;
     }
 
-    // 设置方向
-    setDirection(dir) {
-        this.direction = dir % 360;
-        if (this.direction < 0) this.direction += 360;
+    // 边界检测
+    boundCheck() {
+        this.x = Math.max(-240, Math.min(240, this.x));
+        this.y = Math.max(-180, Math.min(180, this.y));
+    }
+
+    // 加速
+    speedUp() {
+        this.speed = Math.min(this.maxSpeed, this.speed + 1);
+    }
+
+    // 减速
+    slowDown() {
+        this.speed = Math.max(this.minSpeed, this.speed - 1);
+    }
+
+    // 桶滚
+    async barrelRoll() {
+        this.isRolling = true;
+        for (let i = 0; i <= 360; i += 30) {
+            this.rollAngle = i;
+            await this.wait(50);
+        }
+        this.isRolling = false;
+        this.rollAngle = 0;
+    }
+
+    // 后空翻
+    async backLoop() {
+        this.isFlipping = true;
+        this.flipDirection = 1;
+        for (let i = 0; i <= 360; i += 30) {
+            this.flipAngle = i;
+            await this.wait(50);
+        }
+        this.isFlipping = false;
+        this.flipAngle = 0;
+    }
+
+    // 前空翻
+    async frontFlip() {
+        this.isFlipping = true;
+        this.flipDirection = -1;
+        for (let i = 0; i <= 360; i += 30) {
+            this.flipAngle = i;
+            await this.wait(50);
+        }
+        this.isFlipping = false;
+        this.flipAngle = 0;
+    }
+
+    // 悬停
+    async hover(duration) {
+        const startTime = Date.now();
+        while (Date.now() - startTime < duration * 1000) {
+            // 上下轻微浮动
+            this.y += Math.sin(Date.now() / 200) * 0.5;
+            await this.wait(50);
+        }
+    }
+
+    // 添加尾迹
+    addTrail() {
+        this.trail.push({
+            x: this.x,
+            y: this.y,
+            direction: this.direction,
+            z: this.z,
+            life: 20,
+            color: this.effects.rainbow ?
+                `hsl(${Date.now() / 10 % 360}, 100%, 50%)` :
+                this.currentColor
+        });
+        if (this.trail.length > 50) {
+            this.trail.shift();
+        }
+    }
+
+    // 添加粒子特效
+    addParticle(type) {
+        this.particles.push({
+            type: type,
+            x: this.x,
+            y: this.y,
+            vx: (Math.random() - 0.5) * 2 - Math.cos((this.direction - 90) * Math.PI / 180) * 3,
+            vy: (Math.random() - 0.5) * 2 - Math.sin((this.direction - 90) * Math.PI / 180) * 3,
+            life: 30 + Math.random() * 20,
+            maxLife: 50
+        });
+    }
+
+    // 等待
+    wait(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     // 显示气泡
@@ -69,143 +207,269 @@ class Sprite {
         this.sayTimer = Date.now() + duration;
     }
 
-    // 清除气泡
-    clearSay() {
-        this.sayMessage = null;
+    // 改变颜色
+    changeColor() {
+        this.colorIndex = (this.colorIndex + 1) % this.colors.length;
+        this.currentColor = this.colors[this.colorIndex];
     }
 
-    // 绘制小猫
-    drawCat() {
+    // 绘制飞机
+    draw() {
         if (!this.visible) return;
 
         const ctx = this.ctx;
         const cx = this.toCanvasX(this.x);
         const cy = this.toCanvasY(this.y);
-        const scale = this.size / 100;
+        const scale = this.size / 100 * (1 + this.z / 200);
 
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate((this.direction - 90) * Math.PI / 180);
-        ctx.scale(scale, scale);
 
-        // 应用颜色效果
-        if (this.colorEffect !== 0) {
-            ctx.filter = `hue-rotate(${this.colorEffect}deg)`;
+        // 桶滚旋转
+        if (this.isRolling) {
+            ctx.rotate(this.rollAngle * Math.PI / 180);
         }
 
-        // 绘制小猫身体（简化的卡通猫）
-        // 身体
-        ctx.fillStyle = '#FFA500';
+        // 空翻旋转
+        if (this.isFlipping) {
+            ctx.scale(Math.cos(this.flipAngle * Math.PI / 180), 1);
+        }
+
+        ctx.scale(scale, scale);
+
+        // 飞机阴影（模拟 3D 效果）
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.beginPath();
-        ctx.ellipse(0, 10, 30, 25, 0, 0, Math.PI * 2);
+        ctx.ellipse(5, 15, 40, 15, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // 头
+        // 机翼阴影
         ctx.beginPath();
-        ctx.arc(0, -15, 22, 0, Math.PI * 2);
+        ctx.moveTo(-10, 10);
+        ctx.lineTo(-35, 25);
+        ctx.lineTo(5, 25);
+        ctx.lineTo(15, 10);
         ctx.fill();
 
-        // 耳朵
+        // 机身主体
+        ctx.fillStyle = this.currentColor;
         ctx.beginPath();
-        ctx.moveTo(-15, -30);
-        ctx.lineTo(-8, -45);
-        ctx.lineTo(0, -35);
+        ctx.ellipse(0, 0, 35, 12, 0, 0, Math.PI * 2);
         ctx.fill();
 
+        // 机身渐变高光
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.beginPath();
-        ctx.moveTo(15, -30);
-        ctx.lineTo(8, -45);
-        ctx.lineTo(0, -35);
+        ctx.ellipse(-5, -3, 25, 5, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // 内耳
-        ctx.fillStyle = '#FFB6C1';
-        ctx.beginPath();
-        ctx.moveTo(-12, -32);
-        ctx.lineTo(-7, -42);
-        ctx.lineTo(-3, -34);
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.moveTo(12, -32);
-        ctx.lineTo(7, -42);
-        ctx.lineTo(3, -34);
-        ctx.fill();
-
-        // 眼睛
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.ellipse(-8, -18, 6, 7, 0, 0, Math.PI * 2);
-        ctx.ellipse(8, -18, 6, 7, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = 'black';
-        ctx.beginPath();
-        ctx.arc(-6, -17, 3, 0, Math.PI * 2);
-        ctx.arc(6, -17, 3, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 鼻子
-        ctx.fillStyle = '#FF69B4';
-        ctx.beginPath();
-        ctx.moveTo(-3, -8);
-        ctx.lineTo(3, -8);
-        ctx.lineTo(0, -4);
-        ctx.fill();
-
-        // 嘴巴
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, -4);
-        ctx.lineTo(0, 0);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(-5, 2);
-        ctx.quadraticCurveTo(-3, 5, 0, 3);
-        ctx.quadraticCurveTo(3, 5, 5, 2);
-        ctx.stroke();
-
-        // 胡须
-        ctx.lineWidth = 1;
+        // 主机翼
+        ctx.fillStyle = this.currentColor;
         ctx.beginPath();
         ctx.moveTo(-10, 0);
-        ctx.lineTo(-20, -3);
-        ctx.moveTo(-10, 3);
-        ctx.lineTo(-20, 3);
-        ctx.moveTo(-10, 6);
-        ctx.lineTo(-20, 9);
-        ctx.moveTo(10, 0);
-        ctx.lineTo(20, -3);
-        ctx.moveTo(10, 3);
-        ctx.lineTo(20, 3);
-        ctx.moveTo(10, 6);
-        ctx.lineTo(20, 9);
-        ctx.stroke();
+        ctx.lineTo(-20, 35);
+        ctx.lineTo(0, 35);
+        ctx.lineTo(10, 0);
+        ctx.fill();
 
-        // 尾巴
-        ctx.strokeStyle = '#FFA500';
-        ctx.lineWidth = 8;
-        ctx.lineCap = 'round';
+        // 左机翼
         ctx.beginPath();
-        ctx.moveTo(25, 15);
-        ctx.quadraticCurveTo(40, 5, 35, -10);
+        ctx.moveTo(-5, 0);
+        ctx.lineTo(-35, 30);
+        ctx.lineTo(-20, 30);
+        ctx.lineTo(0, 0);
+        ctx.fill();
+
+        // 右机翼
+        ctx.beginPath();
+        ctx.moveTo(5, 0);
+        ctx.lineTo(20, 30);
+        ctx.lineTo(35, 30);
+        ctx.lineTo(10, 0);
+        ctx.fill();
+
+        // 机翼边缘
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-20, 35);
+        ctx.lineTo(20, 35);
         ctx.stroke();
 
-        // 重置滤镜
-        ctx.filter = 'none';
+        // 驾驶舱
+        ctx.fillStyle = '#87CEEB';
+        ctx.beginPath();
+        ctx.ellipse(5, -5, 12, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 驾驶舱边框
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(5, -5, 12, 6, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 座舱盖高光
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.beginPath();
+        ctx.ellipse(3, -6, 6, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 机头
+        ctx.fillStyle = this.currentColor;
+        ctx.beginPath();
+        ctx.moveTo(25, 0);
+        ctx.lineTo(45, 0);
+        ctx.quadraticCurveTo(40, -5, 35, 0);
+        ctx.quadraticCurveTo(40, 5, 25, 0);
+        ctx.fill();
+
+        // 机头尖端（雷达罩）
+        ctx.fillStyle = '#ff4444';
+        ctx.beginPath();
+        ctx.moveTo(35, 0);
+        ctx.lineTo(45, 0);
+        ctx.quadraticCurveTo(42, -3, 38, 0);
+        ctx.quadraticCurveTo(42, 3, 35, 0);
+        ctx.fill();
+
+        // 尾翼
+        ctx.fillStyle = this.currentColor;
+        ctx.beginPath();
+        ctx.moveTo(-30, 0);
+        ctx.lineTo(-45, 0);
+        ctx.lineTo(-40, 15);
+        ctx.fill();
+
+        // 垂直尾翼
+        ctx.beginPath();
+        ctx.moveTo(-35, -5);
+        ctx.lineTo(-42, -15);
+        ctx.lineTo(-38, -5);
+        ctx.fill();
+
+        // 引擎喷口
+        ctx.fillStyle = '#666';
+        ctx.beginPath();
+        ctx.ellipse(-32, 8, 5, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#444';
+        ctx.beginPath();
+        ctx.ellipse(-32, -8, 5, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 引擎火焰（如果加速）
+        if (this.isAccelerating || this.effects.fire) {
+            const flameLength = 15 + Math.random() * 10;
+            ctx.fillStyle = '#ff6600';
+            ctx.beginPath();
+            ctx.moveTo(-35, 5);
+            ctx.lineTo(-35 - flameLength, 0);
+            ctx.lineTo(-35, -5);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffcc00';
+            ctx.beginPath();
+            ctx.moveTo(-35, 3);
+            ctx.lineTo(-35 - flameLength / 2, 0);
+            ctx.lineTo(-35, -3);
+            ctx.fill();
+        }
+
         ctx.restore();
+
+        // 绘制尾迹
+        this.drawTrail();
+
+        // 绘制粒子特效
+        this.drawParticles();
 
         // 绘制说话气泡
         if (this.sayMessage && Date.now() < this.sayTimer) {
-            this.drawSpeechBubble(cx, cy - 40 * scale, this.sayMessage);
+            this.drawSpeechBubble(cx, cy - 50 * scale, this.sayMessage);
         } else {
             this.sayMessage = null;
         }
     }
 
-    // 绘制对话气泡
+    // 绘制尾迹
+    drawTrail() {
+        for (let i = this.trail.length - 1; i >= 0; i--) {
+            const point = this.trail[i];
+            point.life--;
+
+            const ctx = this.ctx;
+            const cx = this.toCanvasX(point.x);
+            const cy = this.toCanvasY(point.y);
+            const scale = this.size / 100 * (1 + point.z / 200) * 0.3;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate((point.direction - 90) * Math.PI / 180);
+            ctx.scale(scale, scale);
+            ctx.globalAlpha = point.life / 20;
+
+            ctx.fillStyle = point.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+
+            if (point.life <= 0) {
+                this.trail.splice(i, 1);
+            }
+        }
+    }
+
+    // 绘制粒子
+    drawParticles() {
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.life--;
+            p.x += p.vx;
+            p.y += p.vy;
+
+            const ctx = this.ctx;
+            const cx = this.toCanvasX(p.x);
+            const cy = this.toCanvasY(p.y);
+
+            ctx.save();
+            ctx.globalAlpha = p.life / p.maxLife;
+
+            if (p.type === 'smoke') {
+                ctx.fillStyle = '#888';
+                ctx.beginPath();
+                ctx.arc(cx, cy, 8 * (1 - p.life / p.maxLife) + 5, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (p.type === 'fire') {
+                const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, 15);
+                gradient.addColorStop(0, '#ffcc00');
+                gradient.addColorStop(0.5, '#ff6600');
+                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 15, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (p.type === 'rainbow') {
+                const hue = (Date.now() / 10 + i * 10) % 360;
+                ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+
+            if (p.life <= 0) {
+                this.particles.splice(i, 1);
+            }
+        }
+    }
+
+    // 绘制说话气泡
     drawSpeechBubble(x, y, text) {
         const ctx = this.ctx;
         ctx.font = '14px Arial';
@@ -215,8 +479,6 @@ class Sprite {
         const bubbleHeight = 30;
 
         ctx.save();
-
-        // 气泡背景
         ctx.fillStyle = 'white';
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 2;
@@ -226,7 +488,6 @@ class Sprite {
         ctx.fill();
         ctx.stroke();
 
-        // 小三角
         ctx.beginPath();
         ctx.moveTo(x - 5, y);
         ctx.lineTo(x + 5, y);
@@ -234,19 +495,38 @@ class Sprite {
         ctx.fill();
         ctx.stroke();
 
-        // 文字
         ctx.fillStyle = 'black';
         ctx.font = '14px Arial';
         ctx.fillText(text, x - metrics.width / 2, y - 10);
-
         ctx.restore();
+    }
+
+    // 更新状态
+    update() {
+        // 更新尾迹
+        if (this.speed > 3) {
+            this.addTrail();
+        }
+
+        // 添加特效粒子
+        if (this.effects.smoke) {
+            for (let i = 0; i < 2; i++) {
+                this.addParticle('smoke');
+            }
+        }
+        if (this.effects.fire) {
+            this.addParticle('fire');
+        }
+        if (this.effects.rainbow) {
+            this.addParticle('rainbow');
+        }
     }
 
     // 更新位置显示
     updatePositionDisplay() {
         const display = document.getElementById('positionDisplay');
         if (display) {
-            display.textContent = `位置：(${Math.round(this.x)}, ${Math.round(this.y)}) 方向：${Math.round(this.direction)}°`;
+            display.textContent = `位置：(${Math.round(this.x)}, ${Math.round(this.y)}) 高度：${Math.round(this.z)}m 速度：${this.speed}马赫 方向：${Math.round(this.direction)}°`;
         }
     }
 }
@@ -256,7 +536,7 @@ class RuntimeEngine {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
-        this.sprite = new Sprite(canvas, this.ctx);
+        this.airplane = new Airplane(canvas, this.ctx);
         this.isRunning = false;
         this.shouldStop = false;
 
@@ -266,64 +546,125 @@ class RuntimeEngine {
         this.backBuffer.height = canvas.height;
         this.backCtx = this.backBuffer.getContext('2d');
 
+        // 云层
+        this.clouds = [];
+        this.initClouds();
+
         this.bindControls();
+    }
+
+    // 初始化云层
+    initClouds() {
+        for (let i = 0; i < 10; i++) {
+            this.clouds.push({
+                x: Math.random() * 480 - 240,
+                y: Math.random() * 360 - 180,
+                size: 30 + Math.random() * 30,
+                speed: 0.2 + Math.random() * 0.3
+            });
+        }
     }
 
     // 绑定控制事件
     bindControls() {
-        // 大小滑块
         const sizeSlider = document.getElementById('sizeSlider');
         const sizeValue = document.getElementById('sizeValue');
 
-        if (sizeSlider) {
-            sizeSlider.addEventListener('input', (e) => {
-                this.sprite.size = parseInt(e.target.value);
-                sizeValue.textContent = this.sprite.size;
-            });
-        }
+        sizeSlider?.addEventListener('input', (e) => {
+            if (this.airplane) {
+                this.airplane.size = parseInt(e.target.value);
+                sizeValue.textContent = this.airplane.size;
+            }
+        });
 
-        // 显示/隐藏
         const showHide = document.getElementById('showHide');
-        if (showHide) {
-            showHide.addEventListener('change', (e) => {
-                this.sprite.visible = e.target.checked;
-            });
-        }
+        showHide?.addEventListener('change', (e) => {
+            if (this.airplane) {
+                this.airplane.visible = e.target.checked;
+            }
+        });
 
-        // 点击角色
+        // 点击飞机
         this.canvas.addEventListener('click', (e) => {
             const rect = this.canvas.getBoundingClientRect();
             const x = e.clientX - rect.left - this.canvas.width / 2;
             const y = this.canvas.height / 2 - (e.clientY - rect.top);
 
-            // 简单的点击检测
-            const dx = x - this.sprite.x;
-            const dy = y - this.sprite.y;
+            const dx = x - this.airplane.x;
+            const dy = y - this.airplane.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            if (dist < 50 * this.sprite.size / 100) {
-                // 触发点击事件
+            if (dist < 50 * this.airplane.size / 100) {
                 this.triggerEvent('clicked');
+            }
+        });
+
+        // 键盘事件
+        document.addEventListener('keydown', (e) => {
+            const keyMap = {
+                'ArrowUp': 'up',
+                'ArrowDown': 'down',
+                'ArrowLeft': 'left',
+                'ArrowRight': 'right',
+                ' ': 'space',
+                'f': 'f',
+                's': 's'
+            };
+            const key = keyMap[e.key];
+            if (key) {
+                this.triggerEvent('keyPressed', key);
             }
         });
     }
 
     // 清除画布
     clear() {
-        this.backCtx.fillStyle = '#f8f9fa';
+        this.backCtx.fillStyle = '#87CEEB';
         this.backCtx.fillRect(0, 0, this.backBuffer.width, this.backBuffer.height);
 
-        // 绘制网格
+        // 绘制天空渐变
+        const gradient = this.backCtx.createLinearGradient(0, 0, 0, this.backBuffer.height);
+        gradient.addColorStop(0, '#1E90FF');
+        gradient.addColorStop(0.5, '#87CEEB');
+        gradient.addColorStop(1, '#E0F6FF');
+        this.backCtx.fillStyle = gradient;
+        this.backCtx.fillRect(0, 0, this.backBuffer.width, this.backBuffer.height);
+
+        // 绘制云层
+        this.drawClouds();
+
+        // 绘制网格（淡色）
         this.drawGrid();
+    }
+
+    // 绘制云层
+    drawClouds() {
+        const ctx = this.backCtx;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+
+        this.clouds.forEach(cloud => {
+            // 云层移动
+            cloud.x += cloud.speed;
+            if (cloud.x > 240) cloud.x = -240;
+
+            const cx = this.canvas.width / 2 + cloud.x;
+            const cy = this.canvas.height / 2 - cloud.y;
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, cloud.size, 0, Math.PI * 2);
+            ctx.arc(cx + cloud.size * 0.8, cy - cloud.size * 0.3, cloud.size * 0.7, 0, Math.PI * 2);
+            ctx.arc(cx - cloud.size * 0.8, cy - cloud.size * 0.3, cloud.size * 0.7, 0, Math.PI * 2);
+            ctx.arc(cx + cloud.size * 0.3, cy + cloud.size * 0.2, cloud.size * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+        });
     }
 
     // 绘制网格
     drawGrid() {
         const ctx = this.backCtx;
-        ctx.strokeStyle = '#e0e0e0';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.lineWidth = 1;
 
-        // 垂直线
         for (let x = 0; x <= this.backBuffer.width; x += 48) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
@@ -331,7 +672,6 @@ class RuntimeEngine {
             ctx.stroke();
         }
 
-        // 水平线
         for (let y = 0; y <= this.backBuffer.height; y += 36) {
             ctx.beginPath();
             ctx.moveTo(0, y);
@@ -340,7 +680,7 @@ class RuntimeEngine {
         }
 
         // 中心线
-        ctx.strokeStyle = '#ccc';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
         ctx.lineWidth = 2;
 
         ctx.beginPath();
@@ -351,26 +691,27 @@ class RuntimeEngine {
         ctx.stroke();
     }
 
-    // 渲染到主画布
+    // 渲染
     render() {
         this.ctx.drawImage(this.backBuffer, 0, 0);
-        this.sprite.drawCat();
-        this.sprite.updatePositionDisplay();
+        this.airplane.update();
+        this.airplane.draw();
+        this.airplane.updatePositionDisplay();
     }
 
-    // 完整渲染循环
+    // 更新循环
     update() {
         this.clear();
         this.render();
         requestAnimationFrame(() => this.update());
     }
 
-    // 等待函数（用于积木执行）
+    // 等待
     wait(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    // 停止所有
+    // 停止
     stop() {
         this.shouldStop = true;
     }
@@ -379,13 +720,17 @@ class RuntimeEngine {
     reset() {
         this.stop();
         setTimeout(() => {
-            this.sprite.x = 0;
-            this.sprite.y = 0;
-            this.sprite.direction = 90;
-            this.sprite.size = 100;
-            this.sprite.colorEffect = 0;
-            this.sprite.visible = true;
-            this.sprite.clearSay();
+            this.airplane.x = 0;
+            this.airplane.y = 0;
+            this.airplane.z = 0;
+            this.airplane.direction = 90;
+            this.airplane.speed = 5;
+            this.airplane.size = 100;
+            this.airplane.visible = true;
+            this.airplane.effects = { smoke: false, fire: false, rainbow: false };
+            this.airplane.particles = [];
+            this.airplane.trail = [];
+            this.airplane.sayMessage = null;
             this.shouldStop = false;
             this.isRunning = false;
         }, 100);
@@ -417,21 +762,11 @@ class RuntimeEngine {
         }
     }
 
-    // 执行积木链（由 main.js 调用）
+    // 执行积木链
     async executeBlockChain(block) {
         if (!block || this.shouldStop) return;
-
         this.isRunning = true;
         await this.executeBlock(block);
-
-        // 执行下一个积木
-        if (block.nextConnection) {
-            const nextBlock = block.nextConnection.targetBlock();
-            if (nextBlock) {
-                await this.executeBlockChain(nextBlock);
-            }
-        }
-
         this.isRunning = false;
     }
 
@@ -440,14 +775,12 @@ class RuntimeEngine {
         if (!block || this.shouldStop) return;
 
         const type = block.type;
-        const sprite = this.sprite;
+        const airplane = this.airplane;
 
-        // 获取数值的辅助函数
         const getVal = (inputName, defaultValue) => {
             try {
                 const input = block.getInput(inputName);
                 if (!input) return defaultValue;
-
                 const targetBlock = input.connection?.targetBlock();
                 if (targetBlock) {
                     const field = targetBlock.inputList[0]?.fieldRow[0];
@@ -456,20 +789,17 @@ class RuntimeEngine {
                         return typeof val === 'number' ? val : parseFloat(val) || defaultValue;
                     }
                 }
-
                 const field = input.fieldRow[0];
                 if (field && field.getValue) {
                     const val = field.getValue();
                     return typeof val === 'number' ? val : parseFloat(val) || defaultValue;
                 }
-
                 return defaultValue;
             } catch (e) {
                 return defaultValue;
             }
         };
 
-        // 获取子积木堆的辅助函数
         const getStack = (inputName) => {
             try {
                 const input = block.getInput(inputName);
@@ -481,68 +811,105 @@ class RuntimeEngine {
         };
 
         switch (type) {
-            case 'motion_move_steps':
-                const steps = getVal('STEPS', 10);
-                sprite.move(steps);
+            case 'flight_move_forward':
+                const distance = getVal('DISTANCE', 10);
+                airplane.moveForward(distance);
                 await this.wait(50);
                 break;
 
-            case 'motion_turn_right':
-                const degreesR = getVal('DEGREES', 15);
-                sprite.turn(degreesR);
-                await this.wait(50);
-                break;
-
-            case 'motion_turn_left':
+            case 'flight_turn_left':
                 const degreesL = getVal('DEGREES', 15);
-                sprite.turn(-degreesL);
+                airplane.turnLeft(degreesL);
                 await this.wait(50);
                 break;
 
-            case 'motion_goto_xy':
+            case 'flight_turn_right':
+                const degreesR = getVal('DEGREES', 15);
+                airplane.turnRight(degreesR);
+                await this.wait(50);
+                break;
+
+            case 'flight_climb':
+                const heightC = getVal('HEIGHT', 10);
+                airplane.climb(heightC);
+                await this.wait(50);
+                break;
+
+            case 'flight_dive':
+                const heightD = getVal('HEIGHT', 10);
+                airplane.dive(heightD);
+                await this.wait(50);
+                break;
+
+            case 'flight_goto':
                 const gotoX = getVal('X', 0);
                 const gotoY = getVal('Y', 0);
-                sprite.goto(gotoX, gotoY);
+                airplane.goto(gotoX, gotoY);
                 await this.wait(50);
                 break;
 
-            case 'motion_set_x':
-                const setX = getVal('X', 0);
-                sprite.goto(setX, sprite.y);
-                await this.wait(50);
+            case 'action_barrel_roll':
+                await airplane.barrelRoll();
                 break;
 
-            case 'motion_set_y':
-                const setY = getVal('Y', 0);
-                sprite.goto(sprite.x, setY);
-                await this.wait(50);
+            case 'action_loop':
+                await airplane.backLoop();
                 break;
 
-            case 'motion_set_direction':
-                const dir = getVal('DIRECTION', 90);
-                sprite.setDirection(dir);
-                await this.wait(50);
+            case 'action_flip':
+                await airplane.frontFlip();
+                break;
+
+            case 'action_hover':
+                const hoverDuration = getVal('DURATION', 1);
+                await airplane.hover(hoverDuration);
+                break;
+
+            case 'action_speed_up':
+                airplane.speedUp();
+                airplane.isAccelerating = true;
+                await this.wait(500);
+                airplane.isAccelerating = false;
+                break;
+
+            case 'action_slow_down':
+                airplane.slowDown();
+                airplane.isDecelerating = true;
+                await this.wait(500);
+                airplane.isDecelerating = false;
+                break;
+
+            case 'effect_smoke':
+                airplane.effects.smoke = true;
+                await this.wait(1000);
+                airplane.effects.smoke = false;
+                break;
+
+            case 'effect_fire':
+                airplane.effects.fire = true;
+                await this.wait(1000);
+                airplane.effects.fire = false;
+                break;
+
+            case 'effect_rainbow':
+                airplane.effects.rainbow = true;
+                await this.wait(2000);
+                airplane.effects.rainbow = false;
+                break;
+
+            case 'effect_clear':
+                airplane.effects = { smoke: false, fire: false, rainbow: false };
+                airplane.particles = [];
                 break;
 
             case 'looks_say':
-                const sayMsg = getVal('MESSAGE', '你好！');
-                sprite.say(String(sayMsg), 2000);
+                const msg = getVal('MESSAGE', '你好！');
+                airplane.say(String(msg), 2000);
                 await this.wait(100);
                 break;
 
-            case 'looks_think':
-                const thinkMsg = getVal('MESSAGE', '让我想想...');
-                sprite.say(String(thinkMsg), 2000);
-                await this.wait(100);
-                break;
-
-            case 'looks_change_color_effect':
-                sprite.colorEffect = (sprite.colorEffect + 25) % 360;
-                await this.wait(100);
-                break;
-
-            case 'looks_clear_graphic_effects':
-                sprite.colorEffect = 0;
+            case 'looks_change_color':
+                airplane.changeColor();
                 await this.wait(100);
                 break;
 
@@ -568,7 +935,6 @@ class RuntimeEngine {
                 break;
 
             case 'control_if':
-                // 简单处理：暂时跳过条件判断
                 const ifStack = getStack('SUBSTACK');
                 await this.executeBlockChain(ifStack);
                 break;
@@ -583,11 +949,9 @@ class RuntimeEngine {
                 break;
 
             case 'event_when_green_flag':
-                // 绿旗事件，继续执行后续积木
                 break;
         }
     }
 }
 
-// 导出全局
 window.RuntimeEngine = RuntimeEngine;

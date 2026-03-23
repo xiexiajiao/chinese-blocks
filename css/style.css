@@ -274,9 +274,28 @@ body {
     border-bottom: 2px solid #f0f0f0;
 }
 
+.flight-tips {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #e8f4f8, #d4edda);
+    border-radius: 8px;
+    font-size: 13px;
+    color: #2c7873;
+}
+
+.flight-tips code {
+    background: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    color: #e74c3c;
+    font-weight: 600;
+}
+
 .sprite-controls {
     display: flex;
     gap: 24px;
+    flex-wrap: wrap;
 }
 
 .control-row {
